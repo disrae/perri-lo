@@ -19,6 +19,10 @@ const hideScrollbarStyle = `
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
 `;
 
 export default function Home() {
@@ -27,6 +31,26 @@ export default function Home() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Smooth scroll handler
+  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const targetElement = document.getElementById(targetId);
+    if (targetElement) {
+      const headerOffset = 65; // Adjust this value to fine-tune the offset
+      const elementPosition = targetElement.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+    // Close mobile menu if open
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  };
 
   // Image data for gallery
   const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
@@ -88,20 +112,17 @@ export default function Home() {
 
           {/* Desktop Navigation */}
           <nav className="ml-auto hidden md:flex gap-6">
-            <Link href="#about" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="#about" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'about')}>
               About
             </Link>
 
-            <Link href="#gallery" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="#gallery" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'gallery')}>
               Gallery
             </Link>
-            <Link href="#recordings" className="text-sm font-medium hover:underline underline-offset-4">
-              Recordings
-            </Link>
-            <Link href="#events" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="#events" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'events')}>
               Events
             </Link>
-            <Link href="#contact" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="#contact" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'contact')}>
               Contact
             </Link>
           </nav>
@@ -121,20 +142,17 @@ export default function Home() {
         {mobileMenuOpen && (
           <div ref={mobileMenuRef} className="md:hidden bg-background border-t">
             <nav className="container py-4 flex flex-col">
-              <Link href="#about" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="#about" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'about')}>
                 About
               </Link>
 
-              <Link href="#gallery" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="#gallery" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'gallery')}>
                 Gallery
               </Link>
-              <Link href="#recordings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                Recordings
-              </Link>
-              <Link href="#events" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="#events" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'events')}>
                 Events
               </Link>
-              <Link href="#contact" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="#contact" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'contact')}>
                 Contact
               </Link>
             </nav>
