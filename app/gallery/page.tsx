@@ -13,7 +13,7 @@ export default function GalleryPage() {
     // Image data - in a real app, this would come from a CMS or API
     const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
         id: index,
-        src: `/gallery/Image ${index + 1}${index === 3 ? '.JPG' : '.jpg'}`,
+        src: `/gallery/Image ${index + 1}.jpg`,
         alt: `Perri Lo performance photo ${index + 1}`,
         caption: `Performance at Concert Hall ${index + 1}`
     }));

@@ -55,7 +55,7 @@ export default function Home() {
   // Image data for gallery
   const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
     id: index,
-    src: `/gallery/Image ${index + 1}${index === 3 ? '.JPG' : '.jpg'}`,
+    src: `/gallery/Image ${index + 1}.jpg`,
     alt: `Perri Lo performance photo ${index + 1}`
   }));
 
