@@ -25,7 +25,6 @@ const openSans = Open_Sans({
 export const metadata = {
   title: "Perri Lo - Classical Pianist",
   description: "Official website of Perri Lo, internationally acclaimed classical pianist and composer.",
-  generator: 'v0.dev'
 };
 
 export default function RootLayout({
