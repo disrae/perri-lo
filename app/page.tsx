@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Mail, MapPin, Music, Play, Menu, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import UpcomingEvents from "@/components/upcoming-events";
@@ -29,8 +30,48 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // React Hook Form setup
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: {
+      name: '',
+      email: '',
+      subject: '',
+      message: ''
+    }
+  });
+
+  // Form submission handler
+  const onSubmit = async (data: any) => {
+    setFormStatus('submitting');
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      setFormStatus('success');
+      reset(); // Clear form fields
+
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setFormStatus('idle');
+      }, 5000);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setFormStatus('error');
+    }
+  };
 
   // Smooth scroll handler
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -104,10 +145,10 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85">
         <div className="container flex h-16 items-center">
           <div className="flex flex-col">
-            <Link href="/" className="font-serif text-xl font-bold">
+            <Link href="/" className="font-serif text-xl font-bold tracking-widest uppercase">
               Perri Lo
             </Link>
-            <span className="text-xs text-muted-foreground">Classical Pianist & Composer</span>
+            <span className="text-xs text-muted-foreground">Pianist - Opera Coach - Producer</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -351,25 +392,20 @@ export default function Home() {
               <div>
                 <h3 className="text-xl font-bold mb-4 font-serif">Get in Touch</h3>
                 <p className="mb-6 font-sans">
-                  For booking inquiries, press, or general questions, please use the contact form or reach out directly
-                  using the information below.
+                  For coachings, booking inquiries, or general questions, please use the contact form or reach out directly using the information below.
                 </p>
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Mail className="h-5 w-5 mr-3" />
-                    <span>contact@perrilo.com</span>
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="h-5 w-5 mr-3" />
-                    <span>Royal Academy of Music, London, UK</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="h-5 w-5 mr-3" />
-                    <span>Management: Global Artists Management</span>
+                    <span>perri.p.lo@gmail.com</span>
                   </div>
                 </div>
                 <div className="flex gap-4 mt-6">
-                  <Button size="icon" variant="outline">
+                  <Link
+                    href="https://www.facebook.com/perri.lo.pianist"
+                    target="_blank"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
@@ -380,13 +416,17 @@ export default function Home() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="lucide lucide-facebook"
+                      className="h-4 w-4"
                     >
                       <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                     </svg>
                     <span className="sr-only">Facebook</span>
-                  </Button>
-                  <Button size="icon" variant="outline">
+                  </Link>
+                  <Link
+                    href="https://www.instagram.com/perri.lo"
+                    target="_blank"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
@@ -397,15 +437,19 @@ export default function Home() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="lucide lucide-instagram"
+                      className="h-4 w-4"
                     >
                       <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
                       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                       <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
                     </svg>
                     <span className="sr-only">Instagram</span>
-                  </Button>
-                  <Button size="icon" variant="outline">
+                  </Link>
+                  <Link
+                    href="https://www.youtube.com/@perrilo2420"
+                    target="_blank"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
@@ -416,23 +460,43 @@ export default function Home() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="lucide lucide-youtube"
+                      className="h-4 w-4"
                     >
                       <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
                       <path d="m10 15 5-3-5-3z" />
                     </svg>
                     <span className="sr-only">YouTube</span>
-                  </Button>
+                  </Link>
                 </div>
               </div>
               <div>
-                <form className="space-y-4 bg-background p-6 rounded-lg shadow-sm">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-background p-6 rounded-lg shadow-sm">
+                  {formStatus === 'success' && (
+                    <div className="bg-green-50 text-green-700 p-3 rounded-md mb-4">
+                      Your message has been sent successfully! We'll get back to you soon.
+                    </div>
+                  )}
+
+                  {formStatus === 'error' && (
+                    <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4">
+                      There was an error sending your message. Please try again later.
+                    </div>
+                  )}
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label htmlFor="name" className="text-sm font-medium">
                         Name
                       </label>
-                      <input id="name" className="w-full p-2 border rounded-md" placeholder="Your name" />
+                      <input
+                        id="name"
+                        className={`w-full p-2 border rounded-md ${errors.name ? 'border-red-500' : ''}`}
+                        placeholder="Your name"
+                        {...register('name', { required: 'Name is required' })}
+                      />
+                      {errors.name && (
+                        <p className="text-red-500 text-xs mt-1">{errors.name.message?.toString()}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="email" className="text-sm font-medium">
@@ -441,16 +505,31 @@ export default function Home() {
                       <input
                         id="email"
                         type="email"
-                        className="w-full p-2 border rounded-md"
+                        className={`w-full p-2 border rounded-md ${errors.email ? 'border-red-500' : ''}`}
                         placeholder="Your email"
+                        {...register('email', {
+                          required: 'Email is required',
+                          pattern: {
+                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                            message: 'Invalid email address'
+                          }
+                        })}
                       />
+                      {errors.email && (
+                        <p className="text-red-500 text-xs mt-1">{errors.email.message?.toString()}</p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="subject" className="text-sm font-medium">
                       Subject
                     </label>
-                    <input id="subject" className="w-full p-2 border rounded-md" placeholder="Subject" />
+                    <input
+                      id="subject"
+                      className="w-full p-2 border rounded-md"
+                      placeholder="Subject"
+                      {...register('subject')}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="message" className="text-sm font-medium">
@@ -458,11 +537,21 @@ export default function Home() {
                     </label>
                     <textarea
                       id="message"
-                      className="w-full p-2 border rounded-md min-h-[120px]"
+                      className={`w-full p-2 border rounded-md min-h-[120px] ${errors.message ? 'border-red-500' : ''}`}
                       placeholder="Your message"
+                      {...register('message', { required: 'Message is required' })}
                     />
+                    {errors.message && (
+                      <p className="text-red-500 text-xs mt-1">{errors.message.message?.toString()}</p>
+                    )}
                   </div>
-                  <Button className="w-full">Send Message</Button>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={formStatus === 'submitting'}
+                  >
+                    {formStatus === 'submitting' ? 'Sending...' : 'Send Message'}
+                  </Button>
                 </form>
               </div>
             </div>
