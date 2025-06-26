@@ -5,18 +5,38 @@ import { Calendar, ChevronLeft, ChevronRight, MapPin, Clock, ExternalLink } from
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Sample events data
+// Events data
 const events = [
   {
     id: 1,
     title: "Decoys: A Concert About Birds",
     date: "June 27, 2025",
-    time: "7:30 PM",
-    venue: "Martha Lou Henley Rehearsal Hall",
-    location: "1955 McLean Drive, Vancouver, BC",
-    description: "A special concert featuring music inspired by our feathered friends.",
+    time: "7:30 pm",
+    venue: "Vancouver Opera – Martha Loui Henley Rehearsal Hall",
+    location: "1955 McLean Drive Vancouver, BC",
+    description: "A song recital inspired by bird, birding, and the wild beauty that connects us all. Henry Chen, baritone and Heather Malloy, mezzo-soprano with Perri Lo, pianist",
     link: "https://www.eventbrite.ca/e/decoys-a-concert-about-birds-tickets-1378222553759?aff=oddtdtcreator"
   },
+  {
+    id: 2,
+    title: "Summer Stages in Burnaby",
+    date: "July 24, 2025",
+    time: "2:00 pm",
+    venue: "Burnaby Lyric Opera – Confederation Park",
+    location: "250 Willingdon Ave, Burnaby BC",
+    description: "Summer Stages in Burnaby brings an outdoor performance of opera arias and duets. Chloé Hurst, soprano and Emma Parkinson, mezzo-soprano with Perri Lo, pianist",
+    link: "https://www.burnaby.ca/recreation-and-arts/events/summer-stages"
+  },
+  {
+    id: 3,
+    title: "Ballet BC at Jacob's Pillow",
+    date: "August 13-17, 2025",
+    time: "7:30 pm and 2:00 pm",
+    venue: "Jacob's Pillow – Ted Shawn Theatre",
+    location: "358 George Carter Road, Becket, MA",
+    description: "Ballet BC presents six performances at the world-renowned Jacob's Pillow Dance Festival, including the U.S. premiere of Bobbi Jene Smith & Or Schreiber's creation, Obsidian. Ballet BC dancers with Perri Lo, pianist",
+    link: "https://www.jacobspillow.org/events/balletbc/"
+  }
 ];
 
 export default function UpcomingEvents() {
