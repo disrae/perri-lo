@@ -267,7 +267,9 @@ export default function Home() {
               </p>
 
               <div className="pt-4 flex justify-center">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Download Complete CV</Button>
+                <Link href="/PerriLoCV.pdf" target="_blank" rel="noopener noreferrer">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Download Complete CV</Button>
+                </Link>
               </div>
             </div>
           </div>
@@ -397,7 +399,7 @@ export default function Home() {
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Mail className="h-5 w-5 mr-3" />
-                    <span>perri.p.lo@gmail.com</span>
+                    <a href="mailto:info@perrilo.com" className="hover:underline">info@perrilo.com</a>
                   </div>
                 </div>
                 <div className="flex gap-4 mt-6">
