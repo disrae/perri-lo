@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage } from "@/lib/firebase";
 import {
     signInWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, deleteField } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "firebase/storage";
 import { format } from 'date-fns';
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +56,16 @@ export default function AdminPage() {
     const [saved, setSaved] = useState(false);
     const [rebuilding, setRebuilding] = useState(false);
     const [rebuildStatus, setRebuildStatus] = useState<'idle' | 'success'>('idle');
+
+    // CV state
+    const [cvFile, setCvFile] = useState<File | null>(null);
+    const [cvUploadStatus, setCvUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+    const [cvDownloadUrl, setCvDownloadUrl] = useState<string>('');
+
+    // Gallery state
+    const [galleryImages, setGalleryImages] = useState<{ url: string, ref: any; }[]>([]);
+    const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+    const [galleryUploadStatus, setGalleryUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
 
     // Events state
     const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -113,9 +125,37 @@ export default function AdminPage() {
         }
     }, [user]);
 
+    const fetchGalleryImages = async () => {
+        const listRef = ref(storage, 'gallery');
+        try {
+            const res = await listAll(listRef);
+            const imagePromises = res.items.map(async (itemRef) => {
+                const url = await getDownloadURL(itemRef);
+                return { url, ref: itemRef };
+            });
+            const images = await Promise.all(imagePromises);
+            setGalleryImages(images);
+        } catch (error) {
+            console.error("Failed to fetch gallery images", error);
+        }
+    };
+
+    const fetchCvDownloadUrl = async () => {
+        try {
+            const cvRef = ref(storage, 'cv/PerriLoCV.pdf');
+            const url = await getDownloadURL(cvRef);
+            setCvDownloadUrl(url);
+        } catch (error) {
+            console.warn("CV not found or access error. Upload one to enable the download link.", error);
+            setCvDownloadUrl('');
+        }
+    };
+
     useEffect(() => {
         fetchBio();
         fetchEvents();
+        fetchCvDownloadUrl();
+        fetchGalleryImages();
     }, [fetchBio, fetchEvents]);
 
     // Handle login
@@ -261,6 +301,62 @@ export default function AdminPage() {
         }
     };
 
+    const handleCvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setCvFile(e.target.files[0]);
+        }
+    };
+
+    const handleCvUpload = async () => {
+        if (!cvFile) return;
+        setCvUploadStatus('uploading');
+        try {
+            const cvRef = ref(storage, 'cv/PerriLoCV.pdf');
+            await uploadBytes(cvRef, cvFile);
+            setCvUploadStatus('success');
+            fetchCvDownloadUrl(); // Refresh URL after upload
+            setTimeout(() => setCvUploadStatus('idle'), 3000);
+        } catch (error) {
+            console.error("Failed to upload CV", error);
+            setCvUploadStatus('error');
+        }
+    };
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setImageFiles(e.target.files);
+        }
+    };
+
+    const handleImageUpload = async () => {
+        if (!imageFiles) return;
+        setGalleryUploadStatus('uploading');
+        try {
+            const uploadPromises = Array.from(imageFiles).map(file => {
+                const imageRef = ref(storage, `gallery/${file.name}`);
+                return uploadBytes(imageRef, file);
+            });
+            await Promise.all(uploadPromises);
+            setGalleryUploadStatus('success');
+            fetchGalleryImages(); // Refresh gallery
+            setImageFiles(null);
+            setTimeout(() => setGalleryUploadStatus('idle'), 3000);
+        } catch (error) {
+            console.error("Failed to upload images", error);
+            setGalleryUploadStatus('error');
+        }
+    };
+
+    const handleImageDelete = async (imageRef: any) => {
+        if (!window.confirm("Are you sure you want to delete this image?")) return;
+        try {
+            await deleteObject(imageRef);
+            fetchGalleryImages(); // Refresh gallery
+        } catch (error) {
+            console.error("Failed to delete image", error);
+        }
+    };
+
     // ----------- UI RENDERING -------------
     if (!user) {
         return (
@@ -327,6 +423,31 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
 
+                    {/* CV Uploader */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Manage CV</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <Input type="file" accept=".pdf" onChange={handleCvFileChange} />
+                                <Button onClick={handleCvUpload} disabled={!cvFile || cvUploadStatus === 'uploading'}>
+                                    {cvUploadStatus === 'uploading' ? 'Uploading...' : 'Upload New CV'}
+                                </Button>
+                                {cvUploadStatus === 'success' && <p className="text-green-500">CV uploaded successfully!</p>}
+                                {cvUploadStatus === 'error' && <p className="text-red-500">Upload failed. Please try again.</p>}
+
+                                {cvDownloadUrl && (
+                                    <div className="pt-4">
+                                        <a href={cvDownloadUrl} target="_blank" rel="noopener noreferrer">
+                                            <Button variant="outline">View Current CV</Button>
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Events Manager */}
                     <Card>
                         <CardHeader>
@@ -361,6 +482,43 @@ export default function AdminPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Gallery Manager Card */}
+                    <div className="mt-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Manage Gallery</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-2">Upload New Images</h3>
+                                        <Input type="file" multiple accept="image/*" onChange={handleImageFileChange} />
+                                        <Button onClick={handleImageUpload} disabled={!imageFiles || galleryUploadStatus === 'uploading'} className="mt-2">
+                                            {galleryUploadStatus === 'uploading' ? 'Uploading...' : 'Upload Images'}
+                                        </Button>
+                                        {galleryUploadStatus === 'success' && <p className="text-green-500 mt-2">Images uploaded successfully!</p>}
+                                        {galleryUploadStatus === 'error' && <p className="text-red-500 mt-2">Upload failed. Please try again.</p>}
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <h3 className="text-lg font-semibold mb-2">Current Gallery</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                            {galleryImages.map((image, index) => (
+                                                <div key={index} className="relative group">
+                                                    <Image src={image.url} alt={`Gallery image ${index + 1}`} width={200} height={200} className="object-cover rounded-md w-full h-full" />
+                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.ref)}>Delete</Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {galleryImages.length === 0 && <p>No images in the gallery.</p>}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
 

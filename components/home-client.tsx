@@ -6,6 +6,8 @@ import { Mail, Menu, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import DOMPurify from "isomorphic-dompurify";
+import { getStorage, ref, getDownloadURL, listAll } from "firebase/storage";
+import { app } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import UpcomingEvents from "@/components/upcoming-events";
@@ -32,13 +34,58 @@ interface HomeClientProps {
     events: Event[];
 }
 
+interface GalleryImage {
+    id: number;
+    src: string;
+    alt: string;
+}
+
 export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [galleryModalOpen, setGalleryModalOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+    const [cvUrl, setCvUrl] = useState<string | null>(null);
+    const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+    // Fetch dynamic content from Firebase
+    useEffect(() => {
+        const fetchCvUrl = async () => {
+            try {
+                const storage = getStorage(app);
+                const cvRef = ref(storage, 'cv/PerriLoCV.pdf');
+                const url = await getDownloadURL(cvRef);
+                setCvUrl(url);
+            } catch (error) {
+                console.error("Could not fetch CV URL:", error);
+            }
+        };
+
+        const fetchGalleryImages = async () => {
+            try {
+                const storage = getStorage(app);
+                const listRef = ref(storage, 'gallery');
+                const res = await listAll(listRef);
+                const imagePromises = res.items.map(async (itemRef, index) => {
+                    const url = await getDownloadURL(itemRef);
+                    return {
+                        id: index,
+                        src: url,
+                        alt: `Perri Lo performance photo ${index + 1}`
+                    };
+                });
+                const images = await Promise.all(imagePromises);
+                setGalleryImages(images);
+            } catch (error) {
+                console.error("Failed to fetch gallery images", error);
+            }
+        };
+
+        fetchCvUrl();
+        fetchGalleryImages();
+    }, []);
 
     // React Hook Form setup
     const { register, handleSubmit, reset, formState: { errors } } = useForm({
@@ -100,11 +147,11 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     };
 
     // Image data for gallery
-    const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
-        id: index,
-        src: `/gallery/Image ${index + 1}.jpg`,
-        alt: `Perri Lo performance photo ${index + 1}`
-    }));
+    // const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
+    //     id: index,
+    //     src: `/gallery/Image ${index + 1}.jpg`,
+    //     alt: `Perri Lo performance photo ${index + 1}`
+    // }));
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -250,36 +297,35 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                                 className="prose prose-lg max-w-none"
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bioHtml) }}
                             />
-
-                            <div className="pt-4 flex justify-center">
-                                <Link href="/PerriLoCV.pdf" target="_blank" rel="noopener noreferrer">
-                                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Download Complete CV</Button>
-                                </Link>
-                            </div>
+                            {cvUrl && (
+                                <a href={cvUrl} target="_blank" rel="noopener noreferrer" download>
+                                    <Button variant="outline" className="mt-4">Download CV</Button>
+                                </a>
+                            )}
                         </div>
                     </div>
                 </section>
 
                 <section id="gallery" className="py-16 bg-muted">
                     <div className="container">
-                        <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Photo Gallery</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {galleryImages.map((image, i) => (
-                                <div
-                                    key={i}
-                                    className="aspect-square relative overflow-hidden rounded-lg cursor-pointer group"
-                                    onClick={() => openGalleryModal(i)}
-                                >
-                                    <Image
-                                        src={image.src}
-                                        alt={image.alt}
-                                        fill
-                                        className="object-cover transition-transform group-hover:scale-105"
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                </div>
-                            ))}
-                        </div>
+                        <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Gallery</h2>
+                        {galleryImages.length > 0 ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {galleryImages.slice(0, 8).map((image, index) => (
+                                    <div key={image.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-lg group" onClick={() => openGalleryModal(index)}>
+                                        <Image
+                                            src={image.src}
+                                            alt={image.alt}
+                                            fill
+                                            className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-110"
+                                        />
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p>The gallery is currently empty. Please check back later!</p>
+                        )}
                     </div>
                 </section>
 
