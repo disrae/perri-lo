@@ -396,95 +396,125 @@ export default function AdminPage() {
         <div className="min-h-screen p-6 flex flex-col">
             <div className="flex-grow">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+                    <h1 className="text-3xl font-bold">Admin Dashboard</h1>
                     <Button variant="outline" onClick={() => signOut(auth)}>
                         Logout
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Bio Editor */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Edit Bio</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {delta && (
-                                <div className="my-6">
-                                    <QuillEditor
-                                        value={delta as any}
-                                        onChange={(d: any) => setDelta(d as Delta)}
-                                    />
-                                </div>
-                            )}
-                            <Button onClick={handleSave} disabled={saving}>
-                                {saving ? "Saving..." : saved ? "Saved!" : "Save Bio"}
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* CV Uploader */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Manage CV</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <Input type="file" accept=".pdf" onChange={handleCvFileChange} />
-                                <Button onClick={handleCvUpload} disabled={!cvFile || cvUploadStatus === 'uploading'}>
-                                    {cvUploadStatus === 'uploading' ? 'Uploading...' : 'Upload New CV'}
-                                </Button>
-                                {cvUploadStatus === 'success' && <p className="text-green-500">CV uploaded successfully!</p>}
-                                {cvUploadStatus === 'error' && <p className="text-red-500">Upload failed. Please try again.</p>}
-
-                                {cvDownloadUrl && (
-                                    <div className="pt-4">
-                                        <a href={cvDownloadUrl} target="_blank" rel="noopener noreferrer">
-                                            <Button variant="outline">View Current CV</Button>
-                                        </a>
+                {/* --- Static Content Section --- */}
+                <div className="mb-12">
+                    <h2 className="text-2xl font-semibold border-b pb-2 mb-4">Site Content</h2>
+                    <p className="text-muted-foreground mb-6">
+                        Changes made in this section require you to press the "Re-build Site" button to make them visible on the live website and will go live within 2 minutes.
+                    </p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Bio Editor */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Edit Bio</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {delta && (
+                                    <div className="my-6">
+                                        <QuillEditor
+                                            value={delta as any}
+                                            onChange={(d: any) => setDelta(d as Delta)}
+                                        />
                                     </div>
                                 )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <Button onClick={handleSave} disabled={saving}>
+                                    {saving ? "Saving..." : saved ? "Saved!" : "Save Bio"}
+                                </Button>
+                            </CardContent>
+                        </Card>
 
-                    {/* Events Manager */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex justify-between items-center">
-                                <span>Upcoming Events</span>
-                                <Button onClick={() => { setEditingEvent({ dates: [''], times: [''] }); setIsEventModalOpen(true); }}>Add Event</Button>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {events.map(event => (
-                                    <div key={event.id} className="flex items-center justify-between p-2 border rounded-md">
-                                        <div>
-                                            <p className="font-semibold">{event.title}</p>
-                                            <p className="text-sm text-muted-foreground">{event.datetimes && event.datetimes.length > 0 ? new Date(event.datetimes[0].seconds * 1000).toLocaleDateString() : 'No date'}</p>
+                        {/* Events Manager */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex justify-between items-center">
+                                    <span>Upcoming Events</span>
+                                    <Button onClick={() => { setEditingEvent({ dates: [''], times: [''] }); setIsEventModalOpen(true); }}>Add Event</Button>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4 max-h-96 overflow-y-auto">
+                                    {events.map(event => (
+                                        <div key={event.id} className="flex items-center justify-between p-2 border rounded-md">
+                                            <div>
+                                                <p className="font-semibold">{event.title}</p>
+                                                <p className="text-sm text-muted-foreground">{event.datetimes && event.datetimes.length > 0 ? new Date(event.datetimes[0].seconds * 1000).toLocaleDateString() : 'No date'}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button variant="outline" size="sm" onClick={() => {
+                                                    const eventToEdit = {
+                                                        ...event,
+                                                        dates: event.datetimes && event.datetimes.length > 0 ? event.datetimes.map(dt => format(dt.toDate(), 'yyyy-MM-dd')) : [''],
+                                                        times: event.times && event.times.length > 0 ? event.times : [''],
+                                                    };
+                                                    setEditingEvent(eventToEdit);
+                                                    setIsEventModalOpen(true);
+                                                }}>Edit</Button>
+                                                <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}>Delete</Button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => {
-                                                const eventToEdit = {
-                                                    ...event,
-                                                    dates: event.datetimes && event.datetimes.length > 0 ? event.datetimes.map(dt => format(dt.toDate(), 'yyyy-MM-dd')) : [''],
-                                                    times: event.times && event.times.length > 0 ? event.times : [''],
-                                                };
-                                                setEditingEvent(eventToEdit);
-                                                setIsEventModalOpen(true);
-                                            }}>Edit</Button>
-                                            <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}>Delete</Button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {events.length === 0 && <p>No upcoming events.</p>}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Gallery Manager Card */}
+                                    ))}
+                                    {events.length === 0 && <p>No upcoming events.</p>}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    {/* Rebuild Site Card */}
                     <div className="mt-8">
+                        <Card className="bg-muted border-primary/20">
+                            <CardHeader>
+                                <CardTitle>Re-build Site</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Click this button <strong>after</strong> you have finished making all your changes to the "Bio" or "Upcoming Events" sections. This will publish your changes to the live website. You only need to do this once when you are done editing.
+                                </p>
+                                <Button onClick={triggerRebuild} className="px-10 py-5" disabled={rebuilding} >
+                                    {rebuilding ? "Rebuilding..." : rebuildStatus === 'success' ? "Triggered!" : "Re-build Site"}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+
+                {/* --- Dynamic Content Section --- */}
+                <div>
+                    <h2 className="text-2xl font-semibold border-b pb-2 mb-4">Live Assets</h2>
+                    <p className="text-muted-foreground mb-6">
+                        Changes to the CV and Gallery are live <strong>immediately</strong> and do not require a site re-build.
+                    </p>
+                    <div className="space-y-8">
+                        {/* CV Uploader */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Manage CV</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <Input type="file" accept=".pdf" onChange={handleCvFileChange} />
+                                    <Button onClick={handleCvUpload} disabled={!cvFile || cvUploadStatus === 'uploading'}>
+                                        {cvUploadStatus === 'uploading' ? 'Uploading...' : 'Upload New CV'}
+                                    </Button>
+                                    {cvUploadStatus === 'success' && <p className="text-green-500">CV uploaded successfully!</p>}
+                                    {cvUploadStatus === 'error' && <p className="text-red-500">Upload failed. Please try again.</p>}
+
+                                    {cvDownloadUrl && (
+                                        <div className="pt-4">
+                                            <a href={cvDownloadUrl} target="_blank" rel="noopener noreferrer">
+                                                <Button variant="outline">View Current CV</Button>
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Gallery Manager Card */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>Manage Gallery</CardTitle>
@@ -580,12 +610,6 @@ export default function AdminPage() {
                     </Card>
                 </div>
             )}
-
-            <div className="py-8 mt-8 border-t flex justify-center">
-                <Button onClick={triggerRebuild} className="px-20 py-6" disabled={rebuilding} >
-                    {rebuilding ? "Rebuilding..." : rebuildStatus === 'success' ? "Triggered!" : "Re-build Site"}
-                </Button>
-            </div>
         </div>
     );
 } 
