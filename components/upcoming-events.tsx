@@ -4,44 +4,101 @@ import { useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, MapPin, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Event } from "@/lib/types";
+import { format } from 'date-fns';
 
-// Events data
-const events = [
-  {
-    id: 1,
-    title: "Decoys: A Concert About Birds",
-    date: "June 27, 2025",
-    time: "7:30 pm",
-    venue: "Vancouver Opera – Martha Loui Henley Rehearsal Hall",
-    location: "1955 McLean Drive Vancouver, BC",
-    description: "A song recital inspired by bird, birding, and the wild beauty that connects us all. Henry Chen, baritone and Heather Malloy, mezzo-soprano with Perri Lo, pianist",
-    link: "https://www.eventbrite.ca/e/decoys-a-concert-about-birds-tickets-1378222553759?aff=oddtdtcreator"
-  },
-  {
-    id: 2,
-    title: "Summer Stages in Burnaby",
-    date: "July 24, 2025",
-    time: "2:00 pm",
-    venue: "Burnaby Lyric Opera – Confederation Park",
-    location: "250 Willingdon Ave, Burnaby BC",
-    description: "Summer Stages in Burnaby brings an outdoor performance of opera arias and duets. Chloé Hurst, soprano and Emma Parkinson, mezzo-soprano with Perri Lo, pianist",
-    link: "https://www.burnaby.ca/recreation-and-arts/events/summer-stages"
-  },
-  {
-    id: 3,
-    title: "Ballet BC at Jacob's Pillow",
-    date: "August 13-17, 2025",
-    time: "7:30 pm and 2:00 pm",
-    venue: "Jacob's Pillow – Ted Shawn Theatre",
-    location: "358 George Carter Road, Becket, MA",
-    description: "Ballet BC presents six performances at the world-renowned Jacob's Pillow Dance Festival, including the U.S. premiere of Bobbi Jene Smith & Or Schreiber's creation, Obsidian. Ballet BC dancers with Perri Lo, pianist",
-    link: "https://www.jacobspillow.org/events/balletbc/"
-  }
-];
+interface UpcomingEventsProps {
+  events: Event[];
+}
 
-export default function UpcomingEvents() {
-  const [selectedEvent, setSelectedEvent] = useState(events[0]);
+export default function UpcomingEvents({ events }: UpcomingEventsProps) {
+  const [selectedEvent, setSelectedEvent] = useState(events.length > 0 ? events[0] : null);
   const hasMultipleEvents = events.length > 1;
+
+  if (events.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p>There are no upcoming events at this time. Please check back later!</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!selectedEvent) {
+    return null;
+  }
+
+  const formatEventDates = (dates: Date[]) => {
+    if (!dates || dates.length === 0) return '';
+
+    const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
+
+    const ranges: { start: Date, end: Date; }[] = [];
+    let currentRange: { start: Date, end: Date; } | null = null;
+
+    for (const date of sortedDates) {
+      if (!currentRange) {
+        currentRange = { start: date, end: date };
+      } else {
+        const nextDay = new Date(currentRange.end);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        if (
+          date.getFullYear() === nextDay.getFullYear() &&
+          date.getMonth() === nextDay.getMonth() &&
+          date.getDate() === nextDay.getDate()
+        ) {
+          currentRange.end = date;
+        } else {
+          ranges.push(currentRange);
+          currentRange = { start: date, end: date };
+        }
+      }
+    }
+    if (currentRange) {
+      ranges.push(currentRange);
+    }
+
+    return ranges.map(range => {
+      const { start, end } = range;
+
+      const isSameDay = start.toDateString() === end.toDateString();
+
+      if (isSameDay) {
+        return format(start, 'MMMM d, yyyy');
+      }
+
+      const startYear = format(start, 'yyyy');
+      const endYear = format(end, 'yyyy');
+      const startMonth = format(start, 'MMMM');
+      const endMonth = format(end, 'MMMM');
+      const startDay = format(start, 'd');
+      const endDay = format(end, 'd');
+
+      if (startYear !== endYear) {
+        return `${format(start, 'MMMM d, yyyy')} – ${format(end, 'MMMM d, yyyy')}`;
+      }
+      if (startMonth !== endMonth) {
+        return `${format(start, 'MMMM d')} – ${format(end, 'MMMM d')}, ${endYear}`;
+      }
+      return `${startMonth} ${startDay}–${endDay}, ${startYear}`;
+    }).join(' & ');
+  };
+
+  const formatShowtimes = (times: string[]) => {
+    if (!times || times.length === 0) {
+      return '';
+    }
+    return times.map(time => {
+      if (!time) return '';
+      const [hours, minutes] = time.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours, 10));
+      date.setMinutes(parseInt(minutes, 10));
+      return format(date, 'p');
+    }).join(' / ');
+  };
 
   const handlePrevEvent = () => {
     const currentIndex = events.findIndex((event) => event.id === selectedEvent.id);
@@ -83,10 +140,10 @@ export default function UpcomingEvents() {
             <div className="flex items-start gap-3 bg-muted p-3 rounded-md">
               <Calendar className="h-5 w-5 text-primary mt-0.5" />
               <div>
-                <div className="font-medium">{selectedEvent.date}</div>
+                <div className="font-medium">{formatEventDates(selectedEvent.datetimes)}</div>
                 <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Clock className="h-3.5 w-3.5" />
-                  {selectedEvent.time}
+                  {formatShowtimes(selectedEvent.times)}
                 </div>
               </div>
             </div>
@@ -101,13 +158,15 @@ export default function UpcomingEvents() {
 
             <p className="text-sm pt-2">{selectedEvent.description}</p>
 
-            <div className="pt-2">
-              <a href={selectedEvent.link} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="w-full flex items-center gap-2">
-                  Visit Official Website <ExternalLink className="h-4 w-4" />
-                </Button>
-              </a>
-            </div>
+            {selectedEvent.link && (
+              <div className="pt-2">
+                <a href={selectedEvent.link} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="w-full flex items-center gap-2">
+                    Visit Official Website <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </a>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -127,16 +186,22 @@ export default function UpcomingEvents() {
               >
                 <div className="flex flex-col gap-2">
                   <div className="font-medium text-lg">{event.title}</div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 mt-2">
+                    <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{event.venue}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4 text-primary" />
-                      <span>{event.date} • {event.time}</span>
+                      <span>{formatEventDates(event.datetimes)}</span>
                     </div>
                   </div>
+                  {event.times && event.times.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatShowtimes(event.times)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -146,3 +211,4 @@ export default function UpcomingEvents() {
     </div>
   );
 }
+

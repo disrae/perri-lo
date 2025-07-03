@@ -1,7 +1,8 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { QuillDeltaToHtmlConverter } from "quill-delta-to-html";
 import HomeClient from "@/components/home-client";
+import { Event } from "@/lib/types";
 
 // Re-export this so it's not tree-shaken
 export { HomeClient };
@@ -31,7 +32,38 @@ async function getBioHtml() {
   }
 }
 
+async function getEvents(): Promise<Event[]> {
+  try {
+    const eventsCollection = collection(db, "events");
+    const q = query(eventsCollection, orderBy("datetimes", "asc"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return [];
+    }
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      const event: Event = {
+        id: doc.id,
+        title: data.title,
+        venue: data.venue,
+        location: data.location,
+        description: data.description,
+        link: data.link,
+        datetimes: (data.datetimes as Timestamp[] || []).map(t => t.toDate()),
+        times: data.times || [],
+      };
+      return event;
+    });
+  } catch (error) {
+    console.error("Failed to fetch events:", error);
+    return [];
+  }
+}
+
 export default async function Home() {
   const bioHtml = await getBioHtml();
-  return <HomeClient bioHtml={bioHtml} />;
+  const events = await getEvents();
+  return <HomeClient bioHtml={bioHtml} events={events} />;
 }

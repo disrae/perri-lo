@@ -10,6 +10,7 @@ import DOMPurify from "isomorphic-dompurify";
 import { Button } from "@/components/ui/button";
 import UpcomingEvents from "@/components/upcoming-events";
 import GalleryModal from "@/components/gallery-modal";
+import { Event } from "@/lib/types";
 
 // CSS for custom scrollbar hiding
 const hideScrollbarStyle = `
@@ -28,9 +29,10 @@ const hideScrollbarStyle = `
 
 interface HomeClientProps {
     bioHtml: string;
+    events: Event[];
 }
 
-export default function HomeClient({ bioHtml }: HomeClientProps) {
+export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [galleryModalOpen, setGalleryModalOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -292,10 +294,10 @@ export default function HomeClient({ bioHtml }: HomeClientProps) {
                     {hideScrollbarStyle}
                 </style>
 
-                <section id="events" className="py-16 bg-background">
+                <section id="events" className="py-16 bg-muted">
                     <div className="container">
                         <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Upcoming Events</h2>
-                        <UpcomingEvents />
+                        <UpcomingEvents events={events} />
                     </div>
                 </section>
 
