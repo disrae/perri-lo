@@ -288,14 +288,24 @@ export default function AdminPage() {
     const triggerRebuild = async () => {
         setRebuilding(true);
         setRebuildStatus('idle');
+
         try {
-            await fetch(process.env.NEXT_PUBLIC_REBUILD_URL!, {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) {
+                throw new Error("Not authenticated!");
+            }
+
+            await fetch('/api/rebuild', {
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
             setRebuildStatus('success');
             setTimeout(() => setRebuildStatus('idle'), 3000);
         } catch (err) {
             console.error("Failed to trigger rebuild", err);
+            // Optionally, provide more specific feedback to the user
         } finally {
             setRebuilding(false);
         }
