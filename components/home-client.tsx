@@ -77,8 +77,8 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     // Scroll detection for header background
     useEffect(() => {
         const handleScroll = () => {
-            // Hero section is 80vh, so we check if we've scrolled past it
-            const heroHeight = window.innerHeight * 0.8;
+            // Hero section is 100vh, so we check if we've scrolled past it
+            const heroHeight = window.innerHeight;
             const scrollPosition = window.scrollY;
 
             setIsScrolled(scrollPosition > heroHeight - 100); // Transition starts 100px before hero ends
@@ -209,7 +209,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                                 }`}>
                             Perri Lo
                         </Link>
-                        <span className={`text-xs transition-colors tracking-widest ${isScrolled ? 'text-muted-foreground' : 'text-white/80'
+                        <span className={`text-xs transition-colors tracking-wider ${isScrolled ? 'text-muted-foreground' : 'text-white/80'
                             }`}>Pianist - Opera Coach - Producer</span>
                     </div>
 
@@ -273,7 +273,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                 )}
             </header>
             <main className="flex-1">
-                <section className="relative h-[80vh] w-full">
+                <section className="relative h-screen w-full">
                     <Image
                         src="/hero_edited.png"
                         alt=""
