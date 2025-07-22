@@ -198,7 +198,8 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
             <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85">
                 <div className="container flex h-16 items-center">
                     <div className="flex flex-col">
-                        <Link href="/" className="font-serif text-xl font-bold tracking-widest uppercase">
+                        <Link href="/"
+                            className="font-cinzel text-4xl font-normal tracking-[0.1em] text-foreground hover:text-foreground/80 transition-colors">
                             Perri Lo
                         </Link>
                         <span className="text-xs text-muted-foreground">Pianist - Opera Coach - Producer</span>
