@@ -44,6 +44,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
     const [cvUrl, setCvUrl] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+    const [isScrolled, setIsScrolled] = useState(false);
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -71,6 +72,20 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
 
         fetchCvUrl();
         fetchGalleryImages();
+    }, []);
+
+    // Scroll detection for header background
+    useEffect(() => {
+        const handleScroll = () => {
+            // Hero section is 80vh, so we check if we've scrolled past it
+            const heroHeight = window.innerHeight * 0.8;
+            const scrollPosition = window.scrollY;
+
+            setIsScrolled(scrollPosition > heroHeight - 100); // Transition starts 100px before hero ends
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     // React Hook Form setup
@@ -181,29 +196,40 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
 
     return (
         <div className="flex flex-col min-h-screen">
-            <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85">
+            <header className={`fixed top-0 z-50 w-full transition-all duration-300 ${isScrolled
+                ? 'border-b bg-background/90 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85'
+                : 'border-transparent bg-transparent'
+                }`}>
                 <div className="container flex h-16 items-center">
                     <div className="flex flex-col">
                         <Link href="/"
-                            className="font-cinzel text-4xl font-normal tracking-[0.1em] text-foreground hover:text-foreground/80 transition-colors">
+                            className={`font-cinzel text-4xl font-normal tracking-[0.1em] transition-colors ${isScrolled
+                                ? 'text-foreground hover:text-foreground/80'
+                                : 'text-white hover:text-white/80'
+                                }`}>
                             Perri Lo
                         </Link>
-                        <span className="text-xs text-muted-foreground">Pianist - Opera Coach - Producer</span>
+                        <span className={`text-xs transition-colors ${isScrolled ? 'text-muted-foreground' : 'text-white/80'
+                            }`}>Pianist - Opera Coach - Producer</span>
                     </div>
 
                     {/* Desktop Navigation */}
                     <nav className="ml-auto hidden md:flex gap-6">
-                        <Link href="#about" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'about')}>
+                        <Link href="#about" className={`text-sm font-medium hover:underline underline-offset-4 transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                            }`} onClick={(e) => handleSmoothScroll(e, 'about')}>
                             About
                         </Link>
 
-                        <Link href="#gallery" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'gallery')}>
+                        <Link href="#gallery" className={`text-sm font-medium hover:underline underline-offset-4 transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                            }`} onClick={(e) => handleSmoothScroll(e, 'gallery')}>
                             Gallery
                         </Link>
-                        <Link href="#events" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'events')}>
+                        <Link href="#events" className={`text-sm font-medium hover:underline underline-offset-4 transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                            }`} onClick={(e) => handleSmoothScroll(e, 'events')}>
                             Events
                         </Link>
-                        <Link href="#contact" className="text-sm font-medium hover:underline underline-offset-4" onClick={(e) => handleSmoothScroll(e, 'contact')}>
+                        <Link href="#contact" className={`text-sm font-medium hover:underline underline-offset-4 transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                            }`} onClick={(e) => handleSmoothScroll(e, 'contact')}>
                             Contact
                         </Link>
                     </nav>
@@ -212,7 +238,8 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                     <button
                         ref={menuButtonRef}
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="ml-auto md:hidden"
+                        className={`ml-auto md:hidden transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                            }`}
                         aria-label="Toggle menu"
                     >
                         {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -221,19 +248,24 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
 
                 {/* Mobile Navigation */}
                 {mobileMenuOpen && (
-                    <div ref={mobileMenuRef} className="md:hidden bg-background border-t">
+                    <div ref={mobileMenuRef} className={`md:hidden border-t transition-colors ${isScrolled ? 'bg-background' : 'bg-black/80 backdrop-blur-sm'
+                        }`}>
                         <nav className="container py-4 flex flex-col">
-                            <Link href="#about" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'about')}>
+                            <Link href="#about" className={`py-2 text-sm font-medium transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                                }`} onClick={(e) => handleSmoothScroll(e, 'about')}>
                                 About
                             </Link>
 
-                            <Link href="#gallery" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'gallery')}>
+                            <Link href="#gallery" className={`py-2 text-sm font-medium transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                                }`} onClick={(e) => handleSmoothScroll(e, 'gallery')}>
                                 Gallery
                             </Link>
-                            <Link href="#events" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'events')}>
+                            <Link href="#events" className={`py-2 text-sm font-medium transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                                }`} onClick={(e) => handleSmoothScroll(e, 'events')}>
                                 Events
                             </Link>
-                            <Link href="#contact" className="py-2 text-sm font-medium" onClick={(e) => handleSmoothScroll(e, 'contact')}>
+                            <Link href="#contact" className={`py-2 text-sm font-medium transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                                }`} onClick={(e) => handleSmoothScroll(e, 'contact')}>
                                 Contact
                             </Link>
                         </nav>
