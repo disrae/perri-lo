@@ -125,7 +125,9 @@ export default function UpcomingEvents({ events }: UpcomingEventsProps) {
             ) : (
               <div className="w-9"></div>
             )}
-            <h3 className="text-xl font-bold text-center px-2 truncate">{selectedEvent.title}</h3>
+            <h3 className="text-base sm:text-lg md:text-xl font-bold text-center px-1 sm:px-2 min-w-0 flex-1 leading-tight">
+              {selectedEvent.title}
+            </h3>
             {hasMultipleEvents ? (
               <Button variant="outline" size="icon" className="shrink-0" onClick={handleNextEvent}>
                 <ChevronRight className="h-4 w-4" />
