@@ -209,7 +209,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                                 }`}>
                             Perri Lo
                         </Link>
-                        <span className={`text-xs transition-colors ${isScrolled ? 'text-muted-foreground' : 'text-white/80'
+                        <span className={`text-xs transition-colors tracking-widest ${isScrolled ? 'text-muted-foreground' : 'text-white/80'
                             }`}>Pianist - Opera Coach - Producer</span>
                     </div>
 
