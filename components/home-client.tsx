@@ -281,12 +281,13 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                         </div>
                         <div className="space-y-4 font-sans">
                             <div
-                                className="prose prose-lg max-w-none"
+                                className="prose prose-lg max-w-none bg-transparent"
+                                style={{ backgroundColor: 'transparent' }}
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bioHtml) }}
                             />
                             {cvUrl && (
                                 <a href={cvUrl} target="_blank" rel="noopener noreferrer" download>
-                                    <Button variant="outline" className="mt-4">Download CV</Button>
+                                    <Button variant="default" className="mt-4">Download CV</Button>
                                 </a>
                             )}
                         </div>
@@ -355,7 +356,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                     {hideScrollbarStyle}
                 </style>
 
-                <section id="events" className="py-16 bg-muted">
+                <section id="events" className="py-16">
                     <div className="container">
                         <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Upcoming Events</h2>
                         <UpcomingEvents events={events} />

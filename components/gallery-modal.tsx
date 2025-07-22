@@ -121,7 +121,7 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
     return (
         <>
             <div
-                className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center"
+                className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
                 onClick={onClose}
                 ref={modalRef}
                 tabIndex={0}

@@ -180,7 +180,7 @@ export default function UpcomingEvents({ events }: UpcomingEventsProps) {
                 key={event.id}
                 className={`p-4 rounded-lg cursor-pointer transition-colors ${selectedEvent.id === event.id
                   ? "bg-primary/10 border border-primary/20"
-                  : "bg-card hover:bg-muted border border-border"
+                  : "bg-card hover:bg-accent hover:text-accent-foreground border border-border"
                   }`}
                 onClick={() => setSelectedEvent(event)}
               >
