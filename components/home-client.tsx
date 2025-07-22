@@ -347,9 +347,23 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                                                         src={image.imageUrl}
                                                         className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-110"
                                                         muted
-                                                        onLoadedData={(e) => {
+                                                        preload="metadata"
+                                                        playsInline
+                                                        onLoadedMetadata={(e) => {
                                                             const video = e.target as HTMLVideoElement;
-                                                            video.currentTime = 1; // Show frame at 1 second as thumbnail
+                                                            // Try to seek to 1 second for thumbnail
+                                                            try {
+                                                                if (video.duration > 1) {
+                                                                    video.currentTime = 1;
+                                                                }
+                                                            } catch (error) {
+                                                                // Silently fail if seeking doesn't work (common on mobile)
+                                                                console.debug('Video seeking not available');
+                                                            }
+                                                        }}
+                                                        onError={() => {
+                                                            // Handle video loading errors gracefully
+                                                            console.debug('Video thumbnail loading failed');
                                                         }}
                                                     />
                                                     <div className="absolute inset-0 flex items-center justify-center">
