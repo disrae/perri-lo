@@ -369,7 +369,9 @@ export default function AdminPage() {
                     imagePath: snapshot.ref.fullPath,
                     caption,
                     altText,
-                    order: galleryImages.length + i
+                    order: galleryImages.length + i,
+                    type: file.type.startsWith('image/') ? 'image' : 'video',
+                    mimeType: file.type
                 });
             }
 
@@ -588,20 +590,22 @@ export default function AdminPage() {
                             <CardContent>
                                 <div className="space-y-4">
                                     <div>
-                                        <h3 className="text-lg font-semibold mb-2">Upload New Images</h3>
-                                        <Input type="file" multiple accept="image/*" onChange={handleImageFileChange} />
+                                        <h3 className="text-lg font-semibold mb-2">Upload New Images & Videos</h3>
+                                        <Input type="file" multiple accept="image/*,video/*" onChange={handleImageFileChange} />
 
                                         {pendingImages.length > 0 && (
                                             <div className="mt-4 space-y-4">
-                                                <h4 className="font-medium">Add captions for your images:</h4>
+                                                <h4 className="font-medium">Add captions for your files:</h4>
                                                 {pendingImages.map((image, index) => (
                                                     <div key={index} className="border p-3 rounded-lg space-y-2">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-medium">📷</span>
+                                                            <span className="text-sm font-medium">
+                                                                {image.file.type.startsWith('image/') ? '📷' : '🎬'}
+                                                            </span>
                                                             <span className="text-sm text-gray-600">{image.file.name}</span>
                                                         </div>
                                                         <Textarea
-                                                            placeholder="Enter caption for this image..."
+                                                            placeholder="Enter caption for this file..."
                                                             value={image.caption}
                                                             onChange={(e) => updatePendingImageCaption(index, e.target.value)}
                                                             className="min-h-[80px]"
@@ -616,9 +620,9 @@ export default function AdminPage() {
                                             disabled={pendingImages.length === 0 || galleryUploadStatus === 'uploading'}
                                             className="mt-2"
                                         >
-                                            {galleryUploadStatus === 'uploading' ? 'Uploading...' : 'Upload Images'}
+                                            {galleryUploadStatus === 'uploading' ? 'Uploading...' : 'Upload Files'}
                                         </Button>
-                                        {galleryUploadStatus === 'success' && <p className="text-green-500 mt-2">Images uploaded successfully!</p>}
+                                        {galleryUploadStatus === 'success' && <p className="text-green-500 mt-2">Files uploaded successfully!</p>}
                                         {galleryUploadStatus === 'error' && <p className="text-red-500 mt-2">Upload failed. Please try again.</p>}
                                     </div>
 
@@ -628,7 +632,26 @@ export default function AdminPage() {
                                             {galleryImages.map((image) => (
                                                 <div key={image.id} className="relative group space-y-2">
                                                     <div className="relative aspect-square">
-                                                        <Image src={image.imageUrl} alt={image.altText} fill className="object-cover rounded-md" />
+                                                        {!image.type || image.type === 'image' ? (
+                                                            <Image src={image.imageUrl} alt={image.altText} fill className="object-cover rounded-md" />
+                                                        ) : (
+                                                            <div className="relative w-full h-full bg-gray-100 rounded-md overflow-hidden">
+                                                                <video
+                                                                    src={image.imageUrl}
+                                                                    className="w-full h-full object-cover"
+                                                                    muted
+                                                                    onLoadedData={(e) => {
+                                                                        const video = e.target as HTMLVideoElement;
+                                                                        video.currentTime = 1; // Show frame at 1 second as thumbnail
+                                                                    }}
+                                                                />
+                                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                                    <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                                                                        <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-1"></div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
                                                             <Button variant="secondary" size="sm" onClick={() => startEditingCaption(image.id, image.caption)}>Edit</Button>
                                                             <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.id)}>Delete</Button>

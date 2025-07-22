@@ -63,6 +63,8 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
         const fetchGalleryImages = async () => {
             try {
                 const images = await getGalleryImages();
+                console.log("🖼️ Fetched gallery images:", images);
+                console.log("🎬 Videos found:", images.filter(img => img.type === 'video'));
                 setGalleryImages(images);
             } catch (error) {
                 console.error("Failed to fetch gallery images", error);
@@ -298,17 +300,39 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                         <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Gallery</h2>
                         {galleryImages.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {galleryImages.slice(0, 8).map((image, index) => (
-                                    <div key={image.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-lg group" onClick={() => openGalleryModal(index)}>
-                                        <Image
-                                            src={image.imageUrl}
-                                            alt={image.altText}
-                                            fill
-                                            className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-110"
-                                        />
-                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                ))}
+                                {galleryImages.slice(0, 9).map((image, index) => {
+                                    console.log(`🔍 Rendering item ${index}:`, image.type, image.imageUrl);
+                                    return (
+                                        <div key={image.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-lg group" onClick={() => openGalleryModal(index)}>
+                                            {!image.type || image.type === 'image' ? (
+                                                <Image
+                                                    src={image.imageUrl}
+                                                    alt={image.altText}
+                                                    fill
+                                                    className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-110"
+                                                />
+                                            ) : (
+                                                <div className="relative w-full h-full">
+                                                    <video
+                                                        src={image.imageUrl}
+                                                        className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-110"
+                                                        muted
+                                                        onLoadedData={(e) => {
+                                                            const video = e.target as HTMLVideoElement;
+                                                            video.currentTime = 1; // Show frame at 1 second as thumbnail
+                                                        }}
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                                                            <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-1"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         ) : (
                             <p>The gallery is currently empty. Please check back later!</p>
@@ -323,7 +347,9 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                         id: img.id,
                         src: img.imageUrl,
                         alt: img.altText,
-                        caption: img.caption
+                        caption: img.caption,
+                        type: img.type,
+                        mimeType: img.mimeType
                     }))}
                     initialIndex={selectedImageIndex}
                 />

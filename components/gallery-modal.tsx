@@ -9,6 +9,8 @@ interface GalleryImage {
     src: string;
     alt: string;
     caption?: string;
+    type?: 'image' | 'video';
+    mimeType?: string;
 }
 
 interface GalleryModalProps {
@@ -163,14 +165,27 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
                                     <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
                                 </div>
                             )}
-                            <Image
-                                src={images[selectedImage].src}
-                                alt={images[selectedImage].alt}
-                                fill
-                                className="object-contain"
-                                onLoadingComplete={() => setImageLoading(false)}
-                                priority
-                            />
+
+                            {images[selectedImage].type === 'video' ? (
+                                <video
+                                    src={images[selectedImage].src}
+                                    className="max-w-full max-h-full object-contain"
+                                    controls
+                                    autoPlay
+                                    muted
+                                    onLoadedData={() => setImageLoading(false)}
+                                    onError={() => setImageLoading(false)}
+                                />
+                            ) : (
+                                <Image
+                                    src={images[selectedImage].src}
+                                    alt={images[selectedImage].alt}
+                                    fill
+                                    className="object-contain"
+                                    onLoadingComplete={() => setImageLoading(false)}
+                                    priority
+                                />
+                            )}
 
                             {/* Caption overlay at the bottom of the image */}
                             {images[selectedImage].caption && (
@@ -202,7 +217,7 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
                             )}
                         </div>
 
-                        <div className="flex justify-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                        <div className="flex justify-center gap-2 overflow-x-auto pb-2 pt-4 hide-scrollbar">
                             {images.map((image, i) => (
                                 <div
                                     key={image.id}
@@ -212,13 +227,32 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
                                         setImageLoading(true);
                                     }}
                                 >
-                                    <Image
-                                        src={image.src}
-                                        alt={`Thumbnail ${i + 1}`}
-                                        fill
-                                        sizes="64px"
-                                        className="object-cover"
-                                    />
+                                    {image.type === 'video' ? (
+                                        <div className="relative w-full h-full bg-gray-800">
+                                            <video
+                                                src={image.src}
+                                                className="w-full h-full object-cover"
+                                                muted
+                                                onLoadedData={(e) => {
+                                                    const video = e.target as HTMLVideoElement;
+                                                    video.currentTime = 1;
+                                                }}
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                <div className="w-4 h-4 bg-white/80 rounded-full flex items-center justify-center">
+                                                    <div className="w-0 h-0 border-l-[3px] border-l-black border-y-[2px] border-y-transparent ml-0.5"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Image
+                                            src={image.src}
+                                            alt={`Thumbnail ${i + 1}`}
+                                            fill
+                                            sizes="64px"
+                                            className="object-cover"
+                                        />
+                                    )}
                                 </div>
                             ))}
                         </div>

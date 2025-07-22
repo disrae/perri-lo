@@ -17,4 +17,6 @@ export interface GalleryImage {
     altText: string;
     order: number;
     createdAt: Date;
+    type: 'image' | 'video';
+    mimeType: string;
 } 
