@@ -1,22 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import GalleryModal from "@/components/gallery-modal";
+import { getGalleryImages } from "@/lib/gallery";
+import { GalleryImage } from "@/lib/types";
 
 export default function GalleryPage() {
     const [galleryModalOpen, setGalleryModalOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Image data - in a real app, this would come from a CMS or API
-    const galleryImages = Array.from({ length: 8 }).map((_, index) => ({
-        id: index,
-        src: `/gallery/Image ${index + 1}.jpg`,
-        alt: `Perri Lo performance photo ${index + 1}`,
-        caption: `Performance at Concert Hall ${index + 1}`
-    }));
+    useEffect(() => {
+        const fetchImages = async () => {
+            try {
+                const images = await getGalleryImages();
+                setGalleryImages(images);
+            } catch (error) {
+                console.error("Failed to fetch gallery images", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchImages();
+    }, []);
 
     const openGalleryModal = (index: number) => {
         setSelectedImageIndex(index);
@@ -40,32 +51,43 @@ export default function GalleryPage() {
             </header>
 
             <main className="flex-1 container py-12">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {galleryImages.map((image, index) => (
-                        <div
-                            key={image.id}
-                            className="aspect-square relative overflow-hidden rounded-lg cursor-pointer group"
-                            onClick={() => openGalleryModal(index)}
-                        >
-                            <Image
-                                src={image.src}
-                                alt={image.alt}
-                                fill
-                                className="object-cover transition-transform group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                                <p className="text-white text-sm font-medium">{image.caption}</p>
+                {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                        <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {galleryImages.map((image, index) => (
+                            <div
+                                key={image.id}
+                                className="aspect-square relative overflow-hidden rounded-lg cursor-pointer group"
+                                onClick={() => openGalleryModal(index)}
+                            >
+                                <Image
+                                    src={image.imageUrl}
+                                    alt={image.altText}
+                                    fill
+                                    className="object-cover transition-transform group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                                    <p className="text-white text-sm font-medium">{image.caption}</p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </main>
 
             {/* Gallery Modal using the reusable component */}
             <GalleryModal
                 isOpen={galleryModalOpen}
                 onClose={closeGalleryModal}
-                images={galleryImages}
+                images={galleryImages.map(img => ({
+                    id: img.id,
+                    src: img.imageUrl,
+                    alt: img.altText,
+                    caption: img.caption
+                }))}
                 initialIndex={selectedImageIndex}
             />
 

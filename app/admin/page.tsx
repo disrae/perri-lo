@@ -10,6 +10,8 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, deleteField } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "firebase/storage";
+import { addGalleryImage, getGalleryImages, updateGalleryImage, deleteGalleryImage } from "@/lib/gallery";
+import { GalleryImage } from "@/lib/types";
 import { format } from 'date-fns';
 import Image from "next/image";
 
@@ -63,9 +65,11 @@ export default function AdminPage() {
     const [cvDownloadUrl, setCvDownloadUrl] = useState<string>('');
 
     // Gallery state
-    const [galleryImages, setGalleryImages] = useState<{ url: string, ref: any; }[]>([]);
-    const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+    const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
     const [galleryUploadStatus, setGalleryUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+    const [pendingImages, setPendingImages] = useState<Array<{ file: File, caption: string, altText: string; }>>([]);
+    const [editingImageId, setEditingImageId] = useState<string | null>(null);
+    const [editingCaption, setEditingCaption] = useState('');
 
     // Events state
     const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -126,14 +130,8 @@ export default function AdminPage() {
     }, [user]);
 
     const fetchGalleryImages = async () => {
-        const listRef = ref(storage, 'gallery');
         try {
-            const res = await listAll(listRef);
-            const imagePromises = res.items.map(async (itemRef) => {
-                const url = await getDownloadURL(itemRef);
-                return { url, ref: itemRef };
-            });
-            const images = await Promise.all(imagePromises);
+            const images = await getGalleryImages();
             setGalleryImages(images);
         } catch (error) {
             console.error("Failed to fetch gallery images", error);
@@ -332,24 +330,52 @@ export default function AdminPage() {
         }
     };
 
+
+
     const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setImageFiles(e.target.files);
+            const files = Array.from(e.target.files);
+            const pendingImagesData = files.map(file => ({
+                file,
+                caption: '',
+                altText: `Gallery image - ${file.name}`
+            }));
+            setPendingImages(pendingImagesData);
         }
     };
 
+    const updatePendingImageCaption = (index: number, caption: string) => {
+        setPendingImages(prev => prev.map((item, i) =>
+            i === index ? { ...item, caption } : item
+        ));
+    };
+
     const handleImageUpload = async () => {
-        if (!imageFiles) return;
+        if (pendingImages.length === 0) return;
         setGalleryUploadStatus('uploading');
+
         try {
-            const uploadPromises = Array.from(imageFiles).map(file => {
-                const imageRef = ref(storage, `gallery/${file.name}`);
-                return uploadBytes(imageRef, file);
-            });
-            await Promise.all(uploadPromises);
+            for (let i = 0; i < pendingImages.length; i++) {
+                const { file, caption, altText } = pendingImages[i];
+
+                // Upload to Firebase Storage
+                const imageRef = ref(storage, `gallery/${Date.now()}-${file.name}`);
+                const snapshot = await uploadBytes(imageRef, file);
+                const imageUrl = await getDownloadURL(snapshot.ref);
+
+                // Save metadata to Firestore
+                await addGalleryImage({
+                    imageUrl,
+                    imagePath: snapshot.ref.fullPath,
+                    caption,
+                    altText,
+                    order: galleryImages.length + i
+                });
+            }
+
             setGalleryUploadStatus('success');
+            setPendingImages([]);
             fetchGalleryImages(); // Refresh gallery
-            setImageFiles(null);
             setTimeout(() => setGalleryUploadStatus('idle'), 3000);
         } catch (error) {
             console.error("Failed to upload images", error);
@@ -357,14 +383,44 @@ export default function AdminPage() {
         }
     };
 
-    const handleImageDelete = async (imageRef: any) => {
+    const handleImageDelete = async (imageId: string) => {
         if (!window.confirm("Are you sure you want to delete this image?")) return;
         try {
-            await deleteObject(imageRef);
-            fetchGalleryImages(); // Refresh gallery
+            const image = galleryImages.find(img => img.id === imageId);
+            if (image) {
+                // Delete from Storage
+                const imageRef = ref(storage, image.imagePath);
+                await deleteObject(imageRef);
+
+                // Delete from Firestore
+                await deleteGalleryImage(imageId);
+
+                fetchGalleryImages(); // Refresh gallery
+            }
         } catch (error) {
             console.error("Failed to delete image", error);
         }
+    };
+
+    const startEditingCaption = (imageId: string, currentCaption: string) => {
+        setEditingImageId(imageId);
+        setEditingCaption(currentCaption);
+    };
+
+    const saveCaption = async (imageId: string) => {
+        try {
+            await updateGalleryImage(imageId, { caption: editingCaption });
+            setEditingImageId(null);
+            setEditingCaption('');
+            fetchGalleryImages(); // Refresh gallery
+        } catch (error) {
+            console.error("Failed to update caption", error);
+        }
+    };
+
+    const cancelEdit = () => {
+        setEditingImageId(null);
+        setEditingCaption('');
     };
 
     // ----------- UI RENDERING -------------
@@ -534,7 +590,32 @@ export default function AdminPage() {
                                     <div>
                                         <h3 className="text-lg font-semibold mb-2">Upload New Images</h3>
                                         <Input type="file" multiple accept="image/*" onChange={handleImageFileChange} />
-                                        <Button onClick={handleImageUpload} disabled={!imageFiles || galleryUploadStatus === 'uploading'} className="mt-2">
+
+                                        {pendingImages.length > 0 && (
+                                            <div className="mt-4 space-y-4">
+                                                <h4 className="font-medium">Add captions for your images:</h4>
+                                                {pendingImages.map((image, index) => (
+                                                    <div key={index} className="border p-3 rounded-lg space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-medium">📷</span>
+                                                            <span className="text-sm text-gray-600">{image.file.name}</span>
+                                                        </div>
+                                                        <Textarea
+                                                            placeholder="Enter caption for this image..."
+                                                            value={image.caption}
+                                                            onChange={(e) => updatePendingImageCaption(index, e.target.value)}
+                                                            className="min-h-[80px]"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <Button
+                                            onClick={handleImageUpload}
+                                            disabled={pendingImages.length === 0 || galleryUploadStatus === 'uploading'}
+                                            className="mt-2"
+                                        >
                                             {galleryUploadStatus === 'uploading' ? 'Uploading...' : 'Upload Images'}
                                         </Button>
                                         {galleryUploadStatus === 'success' && <p className="text-green-500 mt-2">Images uploaded successfully!</p>}
@@ -543,12 +624,33 @@ export default function AdminPage() {
 
                                     <div className="pt-4">
                                         <h3 className="text-lg font-semibold mb-2">Current Gallery</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                            {galleryImages.map((image, index) => (
-                                                <div key={index} className="relative group">
-                                                    <Image src={image.url} alt={`Gallery image ${index + 1}`} width={200} height={200} className="object-cover rounded-md w-full h-full" />
-                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.ref)}>Delete</Button>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                            {galleryImages.map((image) => (
+                                                <div key={image.id} className="relative group space-y-2">
+                                                    <div className="relative aspect-square">
+                                                        <Image src={image.imageUrl} alt={image.altText} fill className="object-cover rounded-md" />
+                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                                                            <Button variant="secondary" size="sm" onClick={() => startEditingCaption(image.id, image.caption)}>Edit</Button>
+                                                            <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.id)}>Delete</Button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
+                                                        {editingImageId === image.id ? (
+                                                            <div className="space-y-2">
+                                                                <Textarea
+                                                                    value={editingCaption}
+                                                                    onChange={(e) => setEditingCaption(e.target.value)}
+                                                                    placeholder="Enter caption..."
+                                                                    className="min-h-[80px]"
+                                                                />
+                                                                <div className="flex gap-2">
+                                                                    <Button size="sm" onClick={() => saveCaption(image.id)}>Save</Button>
+                                                                    <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="truncate" title={image.caption}>{image.caption || 'No caption'}</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}

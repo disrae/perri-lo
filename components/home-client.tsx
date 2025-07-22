@@ -8,11 +8,12 @@ import { useForm } from "react-hook-form";
 import DOMPurify from "isomorphic-dompurify";
 import { getStorage, ref, getDownloadURL, listAll } from "firebase/storage";
 import { app } from "@/lib/firebase";
+import { getGalleryImages } from "@/lib/gallery";
 
 import { Button } from "@/components/ui/button";
 import UpcomingEvents from "@/components/upcoming-events";
 import GalleryModal from "@/components/gallery-modal";
-import { Event } from "@/lib/types";
+import { Event, GalleryImage } from "@/lib/types";
 
 // CSS for custom scrollbar hiding
 const hideScrollbarStyle = `
@@ -34,11 +35,7 @@ interface HomeClientProps {
     events: Event[];
 }
 
-interface GalleryImage {
-    id: number;
-    src: string;
-    alt: string;
-}
+
 
 export default function HomeClient({ bioHtml, events }: HomeClientProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -65,18 +62,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
 
         const fetchGalleryImages = async () => {
             try {
-                const storage = getStorage(app);
-                const listRef = ref(storage, 'gallery');
-                const res = await listAll(listRef);
-                const imagePromises = res.items.map(async (itemRef, index) => {
-                    const url = await getDownloadURL(itemRef);
-                    return {
-                        id: index,
-                        src: url,
-                        alt: `Perri Lo performance photo ${index + 1}`
-                    };
-                });
-                const images = await Promise.all(imagePromises);
+                const images = await getGalleryImages();
                 setGalleryImages(images);
             } catch (error) {
                 console.error("Failed to fetch gallery images", error);
@@ -315,8 +301,8 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                                 {galleryImages.slice(0, 8).map((image, index) => (
                                     <div key={image.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-lg group" onClick={() => openGalleryModal(index)}>
                                         <Image
-                                            src={image.src}
-                                            alt={image.alt}
+                                            src={image.imageUrl}
+                                            alt={image.altText}
                                             fill
                                             className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-110"
                                         />
@@ -333,7 +319,12 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                 <GalleryModal
                     isOpen={galleryModalOpen}
                     onClose={closeGalleryModal}
-                    images={galleryImages}
+                    images={galleryImages.map(img => ({
+                        id: img.id,
+                        src: img.imageUrl,
+                        alt: img.altText,
+                        caption: img.caption
+                    }))}
                     initialIndex={selectedImageIndex}
                 />
 

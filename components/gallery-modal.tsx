@@ -5,7 +5,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 
 interface GalleryImage {
-    id: number;
+    id: string;
     src: string;
     alt: string;
     caption?: string;
@@ -171,6 +171,13 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
                                 onLoadingComplete={() => setImageLoading(false)}
                                 priority
                             />
+
+                            {/* Caption overlay at the bottom of the image */}
+                            {images[selectedImage].caption && (
+                                <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm text-white p-3 rounded-lg">
+                                    <p className="text-sm leading-relaxed">{images[selectedImage].caption}</p>
+                                </div>
+                            )}
                         </div>
 
                         <button
