@@ -275,7 +275,7 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
             <main className="flex-1">
                 <section className="relative h-[80vh] w-full">
                     <Image
-                        src="/hero.jpg"
+                        src="/hero_edited.png"
                         alt=""
                         fill
                         className="object-cover"
