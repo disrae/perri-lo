@@ -63,8 +63,6 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
         const fetchGalleryImages = async () => {
             try {
                 const images = await getGalleryImages();
-                console.log("🖼️ Fetched gallery images:", images);
-                console.log("🎬 Videos found:", images.filter(img => img.type === 'video'));
                 setGalleryImages(images);
             } catch (error) {
                 console.error("Failed to fetch gallery images", error);
@@ -301,7 +299,6 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                         {galleryImages.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {galleryImages.slice(0, 9).map((image, index) => {
-                                    console.log(`🔍 Rendering item ${index}:`, image.type, image.imageUrl);
                                     return (
                                         <div key={image.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-lg group" onClick={() => openGalleryModal(index)}>
                                             {!image.type || image.type === 'image' ? (

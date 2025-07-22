@@ -121,7 +121,7 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
     return (
         <>
             <div
-                className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+                className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center"
                 onClick={onClose}
                 ref={modalRef}
                 tabIndex={0}
@@ -187,12 +187,7 @@ export default function GalleryModal({ isOpen, onClose, images, initialIndex }: 
                                 />
                             )}
 
-                            {/* Caption overlay at the bottom of the image */}
-                            {images[selectedImage].caption && (
-                                <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm text-white p-3 rounded-lg">
-                                    <p className="text-sm leading-relaxed">{images[selectedImage].caption}</p>
-                                </div>
-                            )}
+
                         </div>
 
                         <button

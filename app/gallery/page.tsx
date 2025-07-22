@@ -18,8 +18,6 @@ export default function GalleryPage() {
         const fetchImages = async () => {
             try {
                 const images = await getGalleryImages();
-                console.log("📸 Gallery page - Fetched images:", images);
-                console.log("🎬 Gallery page - Videos found:", images.filter(img => img.type === 'video'));
                 setGalleryImages(images);
             } catch (error) {
                 console.error("Failed to fetch gallery images", error);
