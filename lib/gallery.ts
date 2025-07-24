@@ -50,4 +50,18 @@ export const deleteGalleryImage = async (id: string): Promise<void> => {
         console.error('Error deleting gallery image:', error);
         throw error;
     }
+};
+
+export const updateGalleryOrder = async (imageIds: string[]): Promise<void> => {
+    try {
+        const updatePromises = imageIds.map((id, index) => {
+            const docRef = doc(db, GALLERY_COLLECTION, id);
+            return updateDoc(docRef, { order: index });
+        });
+
+        await Promise.all(updatePromises);
+    } catch (error) {
+        console.error('Error updating gallery order:', error);
+        throw error;
+    }
 }; 

@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, deleteField } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "firebase/storage";
-import { addGalleryImage, getGalleryImages, updateGalleryImage, deleteGalleryImage } from "@/lib/gallery";
+import { addGalleryImage, getGalleryImages, updateGalleryImage, deleteGalleryImage, updateGalleryOrder } from "@/lib/gallery";
 import { GalleryImage } from "@/lib/types";
 import { format } from 'date-fns';
 import Image from "next/image";
@@ -19,12 +19,131 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    rectSortingStrategy
+} from '@dnd-kit/sortable';
+import {
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 // Dynamically load QuillEditor to avoid SSR issues with window.
 const QuillEditor = dynamic<{ value: any; onChange: (delta: any) => void; }>(
     () => import("@/components/quill-editor"),
     { ssr: false }
 );
+
+// Sortable Gallery Item Component
+interface SortableGalleryItemProps {
+    image: GalleryImage;
+    onEdit: (id: string, caption: string) => void;
+    onDelete: (id: string) => void;
+}
+
+function SortableGalleryItem({ image, onEdit, onDelete }: SortableGalleryItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: image.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="relative group bg-white border rounded-lg p-3 shadow-sm"
+        >
+            {/* Drag Handle */}
+            <div
+                {...attributes}
+                {...listeners}
+                className="absolute top-2 right-2 z-10 p-1 bg-white/80 rounded cursor-grab active:cursor-grabbing hover:bg-white"
+            >
+                <GripVertical className="h-4 w-4 text-gray-500" />
+            </div>
+
+            <div className="flex gap-3">
+                {/* Image Preview */}
+                <div className="relative w-16 h-16 flex-shrink-0">
+                    {!image.type || image.type === 'image' ? (
+                        <Image
+                            src={image.imageUrl}
+                            alt={image.altText}
+                            fill
+                            className="object-cover rounded"
+                        />
+                    ) : (
+                        <div className="relative w-full h-full bg-gray-100 rounded overflow-hidden">
+                            <video
+                                src={image.imageUrl}
+                                className="w-full h-full object-cover"
+                                muted
+                                preload="metadata"
+                                playsInline
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <div className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center">
+                                    <div className="w-0 h-0 border-l-[4px] border-l-black border-y-[3px] border-y-transparent ml-0.5"></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                        {image.type === 'video' ? '🎬' : '📷'} {image.altText}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {image.caption || 'No caption'}
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEdit(image.id, image.caption)}
+                            className="text-xs h-6"
+                        >
+                            Edit
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => onDelete(image.id)}
+                            className="text-xs h-6"
+                        >
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 interface Delta {
     ops: any[];
@@ -70,6 +189,11 @@ export default function AdminPage() {
     const [pendingImages, setPendingImages] = useState<Array<{ file: File, caption: string, altText: string; }>>([]);
     const [editingImageId, setEditingImageId] = useState<string | null>(null);
     const [editingCaption, setEditingCaption] = useState('');
+
+    // Reordering state
+    const [isReorderMode, setIsReorderMode] = useState(false);
+    const [reorderImages, setReorderImages] = useState<GalleryImage[]>([]);
+    const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
     // Events state
     const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -425,6 +549,59 @@ export default function AdminPage() {
         setEditingCaption('');
     };
 
+    // Drag and drop sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Reordering functions
+    const enterReorderMode = () => {
+        setIsReorderMode(true);
+        setReorderImages([...galleryImages]);
+    };
+
+    const exitReorderMode = () => {
+        setIsReorderMode(false);
+        setReorderImages([]);
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (active.id !== over?.id) {
+            setReorderImages((images) => {
+                const oldIndex = images.findIndex((img) => img.id === active.id);
+                const newIndex = images.findIndex((img) => img.id === over?.id);
+
+                return arrayMove(images, oldIndex, newIndex);
+            });
+        }
+    };
+
+    const saveNewOrder = async () => {
+        setIsUpdatingOrder(true);
+        try {
+            const imageIds = reorderImages.map(img => img.id);
+            await updateGalleryOrder(imageIds);
+
+            // Update the main gallery images with new order
+            const updatedImages = reorderImages.map((img, index) => ({
+                ...img,
+                order: index
+            }));
+            setGalleryImages(updatedImages);
+
+            exitReorderMode();
+        } catch (error) {
+            console.error("Failed to update gallery order", error);
+        } finally {
+            setIsUpdatingOrder(false);
+        }
+    };
+
     // ----------- UI RENDERING -------------
     if (!user) {
         return (
@@ -627,72 +804,136 @@ export default function AdminPage() {
                                     </div>
 
                                     <div className="pt-4">
-                                        <h3 className="text-lg font-semibold mb-2">Current Gallery</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                            {galleryImages.map((image) => (
-                                                <div key={image.id} className="relative group space-y-2">
-                                                    <div className="relative aspect-square">
-                                                        {!image.type || image.type === 'image' ? (
-                                                            <Image src={image.imageUrl} alt={image.altText} fill className="object-cover rounded-md" />
-                                                        ) : (
-                                                            <div className="relative w-full h-full bg-gray-100 rounded-md overflow-hidden">
-                                                                <video
-                                                                    src={image.imageUrl}
-                                                                    className="w-full h-full object-cover"
-                                                                    muted
-                                                                    preload="metadata"
-                                                                    playsInline
-                                                                    onLoadedMetadata={(e) => {
-                                                                        const video = e.target as HTMLVideoElement;
-                                                                        // Try to seek to 1 second for thumbnail
-                                                                        try {
-                                                                            if (video.duration > 1) {
-                                                                                video.currentTime = 1;
-                                                                            }
-                                                                        } catch (error) {
-                                                                            // Silently fail if seeking doesn't work (common on mobile)
-                                                                            console.debug('Video seeking not available');
-                                                                        }
-                                                                    }}
-                                                                    onError={() => {
-                                                                        // Handle video loading errors gracefully
-                                                                        console.debug('Video thumbnail loading failed');
-                                                                    }}
-                                                                />
-                                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                                                    <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
-                                                                        <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-1"></div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
-                                                            <Button variant="secondary" size="sm" onClick={() => startEditingCaption(image.id, image.caption)}>Edit</Button>
-                                                            <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.id)}>Delete</Button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
-                                                        {editingImageId === image.id ? (
-                                                            <div className="space-y-2">
-                                                                <Textarea
-                                                                    value={editingCaption}
-                                                                    onChange={(e) => setEditingCaption(e.target.value)}
-                                                                    placeholder="Enter caption..."
-                                                                    className="min-h-[80px]"
-                                                                />
-                                                                <div className="flex gap-2">
-                                                                    <Button size="sm" onClick={() => saveCaption(image.id)}>Save</Button>
-                                                                    <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <p className="truncate" title={image.caption}>{image.caption || 'No caption'}</p>
-                                                        )}
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-lg font-semibold">Current Gallery</h3>
+                                            {galleryImages.length > 1 && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={isReorderMode ? exitReorderMode : enterReorderMode}
+                                                    disabled={isUpdatingOrder}
+                                                >
+                                                    {isReorderMode ? 'Cancel Reorder' : 'Reorder Gallery'}
+                                                </Button>
+                                            )}
+                                        </div>
+
+                                        {/* Reorder Mode */}
+                                        {isReorderMode ? (
+                                            <div className="space-y-4">
+                                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <p className="text-sm text-blue-800 mb-3">
+                                                        <strong>Reorder Mode:</strong> Drag and drop items to reorder them.
+                                                        Use the grip handle (⋮⋮) to drag items.
+                                                    </p>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            onClick={saveNewOrder}
+                                                            disabled={isUpdatingOrder}
+                                                            size="sm"
+                                                        >
+                                                            {isUpdatingOrder ? 'Saving...' : 'Save New Order'}
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={exitReorderMode}
+                                                            disabled={isUpdatingOrder}
+                                                            size="sm"
+                                                        >
+                                                            Cancel
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                        {galleryImages.length === 0 && <p>No images in the gallery.</p>}
+
+                                                <DndContext
+                                                    sensors={sensors}
+                                                    collisionDetection={closestCenter}
+                                                    onDragEnd={handleDragEnd}
+                                                >
+                                                    <SortableContext
+                                                        items={reorderImages.map(img => img.id)}
+                                                        strategy={verticalListSortingStrategy}
+                                                    >
+                                                        <div className="space-y-2">
+                                                            {reorderImages.map((image) => (
+                                                                <SortableGalleryItem
+                                                                    key={image.id}
+                                                                    image={image}
+                                                                    onEdit={startEditingCaption}
+                                                                    onDelete={handleImageDelete}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </SortableContext>
+                                                </DndContext>
+                                            </div>
+                                        ) : (
+                                            /* Normal Gallery View */
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {galleryImages.map((image) => (
+                                                    <div key={image.id} className="relative group space-y-2">
+                                                        <div className="relative aspect-square">
+                                                            {!image.type || image.type === 'image' ? (
+                                                                <Image src={image.imageUrl} alt={image.altText} fill className="object-cover rounded-md" />
+                                                            ) : (
+                                                                <div className="relative w-full h-full bg-gray-100 rounded-md overflow-hidden">
+                                                                    <video
+                                                                        src={image.imageUrl}
+                                                                        className="w-full h-full object-cover"
+                                                                        muted
+                                                                        preload="metadata"
+                                                                        playsInline
+                                                                        onLoadedMetadata={(e) => {
+                                                                            const video = e.target as HTMLVideoElement;
+                                                                            // Try to seek to 1 second for thumbnail
+                                                                            try {
+                                                                                if (video.duration > 1) {
+                                                                                    video.currentTime = 1;
+                                                                                }
+                                                                            } catch (error) {
+                                                                                // Silently fail if seeking doesn't work (common on mobile)
+                                                                                console.debug('Video seeking not available');
+                                                                            }
+                                                                        }}
+                                                                        onError={() => {
+                                                                            // Handle video loading errors gracefully
+                                                                            console.debug('Video thumbnail loading failed');
+                                                                        }}
+                                                                    />
+                                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                                        <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                                                                            <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-1"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                                                                <Button variant="secondary" size="sm" onClick={() => startEditingCaption(image.id, image.caption)}>Edit</Button>
+                                                                <Button variant="destructive" size="sm" onClick={() => handleImageDelete(image.id)}>Delete</Button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
+                                                            {editingImageId === image.id ? (
+                                                                <div className="space-y-2">
+                                                                    <Textarea
+                                                                        value={editingCaption}
+                                                                        onChange={(e) => setEditingCaption(e.target.value)}
+                                                                        placeholder="Enter caption..."
+                                                                        className="min-h-[80px]"
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <Button size="sm" onClick={() => saveCaption(image.id)}>Save</Button>
+                                                                        <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="truncate" title={image.caption}>{image.caption || 'No caption'}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {galleryImages.length === 0 && <p>No images in the gallery.</p>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
