@@ -35,7 +35,7 @@ async function getBioHtml() {
 async function getEvents(): Promise<Event[]> {
   try {
     const eventsCollection = collection(db, "events");
-    const q = query(eventsCollection, orderBy("datetimes", "asc"));
+    const q = query(eventsCollection, orderBy("datetimes", "desc"));
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
