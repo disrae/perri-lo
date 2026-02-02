@@ -7,6 +7,7 @@ import {
     signInWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
+    sendPasswordResetEmail,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, deleteField } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from "firebase/storage";
@@ -171,6 +172,8 @@ export default function AdminPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+    const [forgotPasswordMessage, setForgotPasswordMessage] = useState<string | null>(null);
 
     const [delta, setDelta] = useState<Delta | null>(null);
     const [saving, setSaving] = useState(false);
@@ -290,6 +293,59 @@ export default function AdminPage() {
             setPassword("");
         } catch (err: any) {
             setError(err.message);
+        }
+    };
+
+    // Handle forgot password
+    const handleForgotPassword = async () => {
+        if (!email.trim()) {
+            setForgotPasswordMessage("Please enter your email address first.");
+            return;
+        }
+
+        setForgotPasswordLoading(true);
+        setForgotPasswordMessage(null);
+        setError(null); // Clear any login errors
+
+        try {
+            console.log('Checking if email is authorized for password reset...');
+            const response = await fetch('/api/auth/forgot-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email.trim() }),
+            });
+
+            const data = await response.json();
+            console.log('API response:', data);
+
+            if (response.ok && data.success) {
+                console.log('Email is authorized. Sending password reset email via Firebase...');
+                // Email is authorized, now send the actual reset email using Firebase
+                const actionCodeSettings = {
+                    url: `${window.location.origin}/admin`,
+                    handleCodeInApp: false,
+                };
+
+                await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
+                console.log('Password reset email sent successfully via Firebase');
+                setForgotPasswordMessage("Password reset email sent! Check your inbox.");
+            } else {
+                console.log('Email not authorized or API error:', data.message);
+                setForgotPasswordMessage(data.message || "Failed to send reset email.");
+            }
+        } catch (error: any) {
+            console.error('Forgot password error:', error);
+            if (error.code === 'auth/invalid-email') {
+                setForgotPasswordMessage("Invalid email address.");
+            } else if (error.code === 'auth/user-not-found') {
+                setForgotPasswordMessage("If an account with this email exists, a password reset link has been sent.");
+            } else {
+                setForgotPasswordMessage("An error occurred. Please try again.");
+            }
+        } finally {
+            setForgotPasswordLoading(false);
         }
     };
 
@@ -628,8 +684,22 @@ export default function AdminPage() {
                         required
                     />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
+                    {forgotPasswordMessage && (
+                        <p className={`text-sm ${forgotPasswordMessage.includes('sent') ? 'text-green-600' : 'text-red-500'}`}>
+                            {forgotPasswordMessage}
+                        </p>
+                    )}
                     <Button type="submit" className="w-full">
                         Login
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleForgotPassword}
+                        disabled={forgotPasswordLoading}
+                    >
+                        {forgotPasswordLoading ? "Sending..." : "Forgot Password?"}
                     </Button>
                 </form>
             </div>
