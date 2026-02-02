@@ -748,33 +748,45 @@ export default function AdminPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex justify-between items-center">
-                                    <span>Upcoming Events</span>
+                                    <span>Events</span>
                                     <Button onClick={() => { setEditingEvent({ dates: [''], times: [''] }); setIsEventModalOpen(true); }}>Add Event</Button>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                                    {events.map(event => (
-                                        <div key={event.id} className="flex items-center justify-between p-2 border rounded-md">
-                                            <div>
-                                                <p className="font-semibold">{event.title}</p>
-                                                <p className="text-sm text-muted-foreground">{event.datetimes && event.datetimes.length > 0 ? new Date(event.datetimes[0].seconds * 1000).toLocaleDateString() : 'No date'}</p>
+                                    {events.map(event => {
+                                        const now = new Date();
+                                        const isUpcoming = event.datetimes?.some(dt => dt.toDate() > now);
+                                        const statusColor = isUpcoming ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600';
+                                        const statusText = isUpcoming ? 'Upcoming' : 'Past';
+
+                                        return (
+                                            <div key={event.id} className="flex items-center justify-between p-2 border rounded-md">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-semibold">{event.title}</p>
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                                            {statusText}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">{event.datetimes && event.datetimes.length > 0 ? new Date(event.datetimes[0].seconds * 1000).toLocaleDateString() : 'No date'}</p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button variant="outline" size="sm" onClick={() => {
+                                                        const eventToEdit = {
+                                                            ...event,
+                                                            dates: event.datetimes && event.datetimes.length > 0 ? event.datetimes.map(dt => format(dt.toDate(), 'yyyy-MM-dd')) : [''],
+                                                            times: event.times && event.times.length > 0 ? event.times : [''],
+                                                        };
+                                                        setEditingEvent(eventToEdit);
+                                                        setIsEventModalOpen(true);
+                                                    }}>Edit</Button>
+                                                    <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}>Delete</Button>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => {
-                                                    const eventToEdit = {
-                                                        ...event,
-                                                        dates: event.datetimes && event.datetimes.length > 0 ? event.datetimes.map(dt => format(dt.toDate(), 'yyyy-MM-dd')) : [''],
-                                                        times: event.times && event.times.length > 0 ? event.times : [''],
-                                                    };
-                                                    setEditingEvent(eventToEdit);
-                                                    setIsEventModalOpen(true);
-                                                }}>Edit</Button>
-                                                <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}>Delete</Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {events.length === 0 && <p>No upcoming events.</p>}
+                                        );
+                                    })}
+                                    {events.length === 0 && <p>No events.</p>}
                                 </div>
                             </CardContent>
                         </Card>
@@ -787,7 +799,7 @@ export default function AdminPage() {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                    Click this button <strong>after</strong> you have finished making all your changes to the "Bio" or "Upcoming Events" sections. This will publish your changes to the live website. You only need to do this once when you are done editing.
+                                    Click this button <strong>after</strong> you have finished making all your changes to the "Bio" or "Events" sections. This will publish your changes to the live website. You only need to do this once when you are done editing.
                                 </p>
                                 <Button onClick={triggerRebuild} className="px-10 py-5" disabled={rebuilding} >
                                     {rebuilding ? "Rebuilding..." : rebuildStatus === 'success' ? "Triggered!" : "Re-build Site"}

@@ -12,6 +12,7 @@ import { getGalleryImages } from "@/lib/gallery";
 
 import { Button } from "@/components/ui/button";
 import UpcomingEvents from "@/components/upcoming-events";
+import PastEvents from "@/components/past-events";
 import GalleryModal from "@/components/gallery-modal";
 import { Event, GalleryImage } from "@/lib/types";
 
@@ -32,12 +33,13 @@ const hideScrollbarStyle = `
 
 interface HomeClientProps {
     bioHtml: string;
-    events: Event[];
+    upcomingEvents: Event[];
+    pastEvents: Event[];
 }
 
 
 
-export default function HomeClient({ bioHtml, events }: HomeClientProps) {
+export default function HomeClient({ bioHtml, upcomingEvents, pastEvents }: HomeClientProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [galleryModalOpen, setGalleryModalOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -405,7 +407,16 @@ export default function HomeClient({ bioHtml, events }: HomeClientProps) {
                 <section id="events" className="py-16">
                     <div className="container">
                         <h2 className="font-serif text-3xl font-bold mb-8 tracking-tight">Upcoming Events</h2>
-                        <UpcomingEvents events={events} />
+                        <UpcomingEvents events={upcomingEvents} />
+
+                        {pastEvents.length > 0 && (
+                            <div className="mt-12">
+                                <h3 className="font-serif text-2xl font-bold mb-6 tracking-tight">Past Events</h3>
+                                <div className="-mx-8">
+                                    <PastEvents events={pastEvents} />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 

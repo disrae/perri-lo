@@ -4,8 +4,7 @@ import { QuillDeltaToHtmlConverter } from "quill-delta-to-html";
 import HomeClient from "@/components/home-client";
 import { Event } from "@/lib/types";
 
-// Re-export this so it's not tree-shaken
-export { HomeClient };
+// HomeClient is imported directly where needed
 
 // App Router's revalidation settings
 export const revalidate = 60; // Re-evaluate the page every 60 seconds
@@ -32,17 +31,21 @@ async function getBioHtml() {
   }
 }
 
-async function getEvents(): Promise<Event[]> {
+async function getEvents(): Promise<{ upcoming: Event[], past: Event[] }> {
   try {
     const eventsCollection = collection(db, "events");
     const q = query(eventsCollection, orderBy("datetimes", "desc"));
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      return [];
+      return { upcoming: [], past: [] };
     }
 
-    return snapshot.docs.map(doc => {
+    const now = new Date();
+    const upcoming: Event[] = [];
+    const past: Event[] = [];
+
+    snapshot.docs.forEach(doc => {
       const data = doc.data();
       const event: Event = {
         id: doc.id,
@@ -54,16 +57,25 @@ async function getEvents(): Promise<Event[]> {
         datetimes: (data.datetimes as Timestamp[] || []).map(t => t.toDate()),
         times: data.times || [],
       };
-      return event;
+
+      // Check if any datetime is in the future
+      const hasUpcomingDate = event.datetimes.some(date => date > now);
+      if (hasUpcomingDate) {
+        upcoming.push(event);
+      } else {
+        past.push(event);
+      }
     });
+
+    return { upcoming, past };
   } catch (error) {
     console.error("Failed to fetch events:", error);
-    return [];
+    return { upcoming: [], past: [] };
   }
 }
 
 export default async function Home() {
   const bioHtml = await getBioHtml();
-  const events = await getEvents();
-  return <HomeClient bioHtml={bioHtml} events={events} />;
+  const { upcoming: upcomingEvents, past: pastEvents } = await getEvents();
+  return <HomeClient bioHtml={bioHtml} upcomingEvents={upcomingEvents} pastEvents={pastEvents} />;
 }
