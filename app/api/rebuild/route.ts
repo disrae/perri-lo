@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 var admin = require("firebase-admin");
 
 // Initialize Firebase Admin SDK
@@ -6,18 +8,38 @@ if (!admin.apps.length) {
     const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT;
 
     if (serviceAccountKey) {
-        // For production (e.g., Vercel), where the service account key is a JSON string.
-        const serviceAccount = JSON.parse(serviceAccountKey);
+        // For production (e.g., Vercel), where the service account key is base64 encoded.
+        const decodedJson = Buffer.from(serviceAccountKey, 'base64').toString('utf8');
+        const serviceAccount = JSON.parse(decodedJson);
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
             databaseURL: process.env.FIREBASE_DATABASE_URL
         });
     } else {
-        // For local development, where GOOGLE_APPLICATION_CREDENTIALS points to a file.
-        // The SDK automatically finds the credentials from the environment variable.
-        admin.initializeApp({
-            databaseURL: process.env.FIREBASE_DATABASE_URL
-        });
+        // For local development, try to read from local file first
+        try {
+            const localKeyPath = path.join(process.cwd(), 'keys', 'firebase_service_key');
+            if (fs.existsSync(localKeyPath)) {
+                const base64Content = fs.readFileSync(localKeyPath, 'utf8').trim();
+                const decodedJson = Buffer.from(base64Content, 'base64').toString('utf8');
+                const serviceAccount = JSON.parse(decodedJson);
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                    databaseURL: process.env.FIREBASE_DATABASE_URL
+                });
+            } else {
+                // Fall back to GOOGLE_APPLICATION_CREDENTIALS
+                admin.initializeApp({
+                    databaseURL: process.env.FIREBASE_DATABASE_URL
+                });
+            }
+        } catch (error) {
+            console.error('Error loading local Firebase credentials:', error);
+            // Fall back to GOOGLE_APPLICATION_CREDENTIALS
+            admin.initializeApp({
+                databaseURL: process.env.FIREBASE_DATABASE_URL
+            });
+        }
     }
 }
 

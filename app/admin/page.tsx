@@ -308,7 +308,7 @@ export default function AdminPage() {
         setError(null); // Clear any login errors
 
         try {
-            console.log('Checking if email is authorized for password reset...');
+            console.log('Sending password reset request...');
             const response = await fetch('/api/auth/forgot-password', {
                 method: 'POST',
                 headers: {
@@ -321,29 +321,13 @@ export default function AdminPage() {
             console.log('API response:', data);
 
             if (response.ok && data.success) {
-                console.log('Email is authorized. Sending password reset email via Firebase...');
-                // Email is authorized, now send the actual reset email using Firebase
-                const actionCodeSettings = {
-                    url: `${window.location.origin}/admin`,
-                    handleCodeInApp: false,
-                };
-
-                await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
-                console.log('Password reset email sent successfully via Firebase');
-                setForgotPasswordMessage("Password reset email sent! Check your inbox.");
+                setForgotPasswordMessage(data.message);
             } else {
-                console.log('Email not authorized or API error:', data.message);
                 setForgotPasswordMessage(data.message || "Failed to send reset email.");
             }
         } catch (error: any) {
             console.error('Forgot password error:', error);
-            if (error.code === 'auth/invalid-email') {
-                setForgotPasswordMessage("Invalid email address.");
-            } else if (error.code === 'auth/user-not-found') {
-                setForgotPasswordMessage("If an account with this email exists, a password reset link has been sent.");
-            } else {
-                setForgotPasswordMessage("An error occurred. Please try again.");
-            }
+            setForgotPasswordMessage("An error occurred. Please try again.");
         } finally {
             setForgotPasswordLoading(false);
         }
